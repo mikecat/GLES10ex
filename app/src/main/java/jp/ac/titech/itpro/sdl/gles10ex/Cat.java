@@ -36,6 +36,11 @@ public class Cat implements SimpleRenderer.Obj {
             {4, 7},
             {0, 4}
     };
+    private final static float[][] colors = {
+            {0.3f, 0.3f, 0.3f},
+            {1.0f, 1.0f, 1.0f},
+            {0.7f, 0.4f, 0.4f}
+    };
     private float x, y, z;
     private FloatBuffer vertexBuffer;
     private ShortBuffer frontIndexBuffer, sideIndexBuffer, backIndexBuffer;
@@ -90,9 +95,11 @@ public class Cat implements SimpleRenderer.Obj {
     @Override
     public void draw(GL10 gl) {
         gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
+        gl.glEnable(GL10.GL_COLOR_MATERIAL);
         gl.glVertexPointer(3, GL10.GL_FLOAT, 0, vertexBuffer);
 
         for (int i = 0; i < 3; i++) {
+            gl.glColor4f(colors[i][0], colors[i][1], colors[i][2], 1.0f);
             gl.glNormal3f(0, 0, 1);
             frontIndexBuffer.position(i * 5);
             gl.glDrawElements(GL10.GL_TRIANGLE_FAN, 5, GL10.GL_UNSIGNED_SHORT, frontIndexBuffer);
@@ -105,6 +112,9 @@ public class Cat implements SimpleRenderer.Obj {
                 gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, 4, GL10.GL_UNSIGNED_SHORT, sideIndexBuffer);
             }
         }
+
+        gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        gl.glDisable(GL10.GL_COLOR_MATERIAL);
     }
 
     @Override

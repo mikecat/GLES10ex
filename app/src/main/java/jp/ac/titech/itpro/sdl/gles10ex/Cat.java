@@ -19,18 +19,21 @@ public class Cat implements SimpleRenderer.Obj {
             {-1.0f, -1.0f / 2.0f},
             {-1.0f, 1.0f / 4.0f},
             {-2.0f / 3.0f, 1.0f},
-            {-1.0f / 3.0f, 1.0f / 2.0f}
+            {-1.0f / 3.0f, 1.0f / 2.0f},
+            {0.0f, 1.0f / 6.0f}
     };
     private final static short[] frontIndex = {
-            10, 9, 8, 7, 0,
-            0, 7, 6, 5, 4,
-            1, 0, 4, 3, 2
+            10, 9, 8, 7, 11, 0,
+            11, 7, 6, 5, 4,
+            1, 0, 11, 4, 3, 2
     };
+    // 12s here are position.length (seems too long to put)
     private final static short[] backIndex = {
-            10 + 11, 0 + 11, 7 + 11, 8 + 11, 9 + 11,
-            0 + 11, 4 + 11, 5 + 11, 6 + 11, 7 + 11,
-            1 + 11, 2 + 11, 3 + 11, 4 + 11, 0 + 11
+            10 + 12, 0 + 12, 11 + 12, 7 + 12, 8 + 12, 9 + 12,
+            11 + 12, 4 + 12, 5 + 12, 6 + 12, 7 + 12,
+            1 + 12, 2 + 12, 3 + 12, 4 + 12, 11 + 12, 0 + 12
     };
+    private final static int[] frontBackCount = {6, 5, 6};
     private final static int[][] sideRange = {
             {7, 11},
             {4, 7},
@@ -67,20 +70,22 @@ public class Cat implements SimpleRenderer.Obj {
                 .order(ByteOrder.nativeOrder()).asShortBuffer();
         backIndexBuffer.put(backIndex);
 
-        short[] sideIndex = new short[positions.length * 2 + 2];
-        for (int i = 0; i < positions.length; i++) {
+        final int sideNum = 11;
+        short[] sideIndex = new short[sideNum * 2 + 2];
+        for (int i = 0; i < sideNum; i++) {
+            // don't use sideNum here : this is vertex index considering all vertex, not only side
             sideIndex[i * 2 + 0] = (short)(i + positions.length);
             sideIndex[i * 2 + 1] = (short)i;
         }
-        sideIndex[positions.length * 2 + 0] = sideIndex[0];
-        sideIndex[positions.length * 2 + 1] = sideIndex[1];
+        sideIndex[sideNum * 2 + 0] = sideIndex[0];
+        sideIndex[sideNum * 2 + 1] = sideIndex[1];
         sideIndexBuffer = ByteBuffer.allocateDirect(sideIndex.length * 2)
                 .order(ByteOrder.nativeOrder()).asShortBuffer();
         sideIndexBuffer.put(sideIndex);
-        positionsNorms = new float[positions.length][2];
-        for (int i = 0; i < positions.length; i++) {
+        positionsNorms = new float[sideNum][2];
+        for (int i = 0; i < sideNum; i++) {
             float[] from = positions[i];
-            float[] to = positions[(i + 1) % positions.length];
+            float[] to = positions[(i + 1) % sideNum];
             float length = (float)Math.sqrt((to[0] - from[0]) * (to[0] - from[0]) +
                     (to[1] - from[1]) * (to[1] - from[1]));
             positionsNorms[i][0] = -(to[1] - from[1]) / length;
@@ -98,18 +103,25 @@ public class Cat implements SimpleRenderer.Obj {
         gl.glEnable(GL10.GL_COLOR_MATERIAL);
         gl.glVertexPointer(3, GL10.GL_FLOAT, 0, vertexBuffer);
 
+        int nextIndex = 0;
         for (int i = 0; i < 3; i++) {
             gl.glColor4f(colors[i][0], colors[i][1], colors[i][2], 1.0f);
+            // draw front & back
             gl.glNormal3f(0, 0, 1);
-            frontIndexBuffer.position(i * 5);
-            gl.glDrawElements(GL10.GL_TRIANGLE_FAN, 5, GL10.GL_UNSIGNED_SHORT, frontIndexBuffer);
+            frontIndexBuffer.position(nextIndex);
+            gl.glDrawElements(GL10.GL_TRIANGLE_FAN, frontBackCount[i],
+                    GL10.GL_UNSIGNED_SHORT, frontIndexBuffer);
             gl.glNormal3f(0, 0, -1);
-            backIndexBuffer.position(i * 5);
-            gl.glDrawElements(GL10.GL_TRIANGLE_FAN, 5, GL10.GL_UNSIGNED_SHORT, backIndexBuffer);
+            backIndexBuffer.position(nextIndex);
+            gl.glDrawElements(GL10.GL_TRIANGLE_FAN, frontBackCount[i],
+                    GL10.GL_UNSIGNED_SHORT, backIndexBuffer);
+            nextIndex += frontBackCount[i];
+            // draw side
             for (int j = sideRange[i][0]; j < sideRange[i][1]; j++) {
                 gl.glNormal3f(positionsNorms[j][0], positionsNorms[j][1], 0);
                 sideIndexBuffer.position(j * 2);
-                gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, 4, GL10.GL_UNSIGNED_SHORT, sideIndexBuffer);
+                gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, 4,
+                        GL10.GL_UNSIGNED_SHORT, sideIndexBuffer);
             }
         }
 
